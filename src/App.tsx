@@ -1,11 +1,11 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import LoginWithMockAPI from './pages/LoginWithMockAPI'
+import Login from './pages/Login'
 import './App.css'
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <LoginWithMockAPI/>,
+    element: <Login/>,
   },
 ]);
 
