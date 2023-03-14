@@ -1,38 +1,57 @@
 import React, { useState } from 'react'
+import * as USER_TYPE from '../types/UserTypes';
+import {userList, _secret} from '../db/users_db';
 
-type LoginSuccessMessage = 'SUCCESS'
-type LoginFailMessage = 'FAIL'
-
-interface LoginResponse {
-  message: LoginSuccessMessage | LoginFailMessage
-  token: string
-}
-
-const login = async(username: string, password: string): Promise<LoginResponse | null> => {
+const login = async(username: string, password: string): Promise<USER_TYPE.LoginResponse | null> => {
   // TODO: 올바른 username, password를 입력하면 {message: 'SUCCESS', token: (원하는 문자열)} 를 반환하세요.
-  if(!(username==='brynna'&&password==='1234')){
-    console.log('실패');
-    //token은 따로 만들어야함.
-    return {message: 'FAIL', token: 'login_fail'};
-  }
+  //token은 _secret키를 따로 만들어야함.
 
-  console.log('성공');
-  return {message: 'SUCCESS', token: 'login_sucess'};
+  const targetUser:USER_TYPE.User|undefined = userList.find(user=>{
+    return user.username===username&&user.password===password
+  })
 
-  //어차피 getUserInfo를 회원db에서 검색해오는데, 프론트단에서 login함수에서 success,fail을 반환하지??
-  //실습이라 그런가?
+  return targetUser ? {message: 'SUCCESS', token: JSON.stringify({user:targetUser.userInfo, secret:_secret})}
+    : {message: 'FAIL', token: null};
+
+  /*순서 2번
+  로그인 정보에 해당하는 회원을 검색해서, 아이디,비번이 일치하면
+  SUCCESS메세지와 함께 token을 만들어서 보내줌(stringify로 string화 시킴)
+  일치하지 않으면 FAIL 메시지를 보냄.
+  */
 }
 
-const getUserInfo = async(userInfo:{username:string,token:any}):Promise<{ username: string } | null> => {
+
+
+const getUserInfo = async(token:string):Promise<USER_TYPE.UserInfo | null> => {
   // TODO: login 함수에서 받은 token을 이용해 사용자 정보를 받아오세요.
-  console.log('userInfo',userInfo);
+  console.log('token',token);
   //username과 token을 받아서, 회원 db에서 user를 검색해 리턴해주는 함수임
-  return null
+
+  /*순서 4
+  클라이언트에서 보내준 token을 가지고 유저 정보를 검색함.
+  -> token은 string형태이므로 parse해서 다시 객체로 만든 다음 검색한다.
+  -> 가장 먼저, token안의 secret키를 찾아서, 서버에서 보내준 것이 맞는 유효한 토큰인지 부터 검사한다.
+  -> 유효한 토큰이 맞으면 회원을 검색한다.
+  -> 해당 회원이 있으면 db에서 회원의 정보를 찾아서 리턴해준다.
+  */
+
+  const parsedToken = JSON.parse(token);
+  console.log('parsedToken',parsedToken);
+  if(!parsedToken?.secret || parsedToken?.secret!==_secret) return null;
+
+  const loggedUser:USER_TYPE.User|undefined = userList.find((user:USER_TYPE.User)=>{
+    console.log(user)
+    if (user.userInfo?.name===parsedToken.user.name) return user;
+  })
+
+  return loggedUser? loggedUser.userInfo : null;
 }
+
+
 
 const Login = () => {
 
-  const [userInfo, setUserInfo] = useState(null);
+  const [userInfo, setUserInfo] = useState<USER_TYPE.UserInfo>({name:null});
 
   const loginSubmitHandler = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,22 +64,31 @@ const Login = () => {
       data[key]=value;
     }
 
-    // console.log(data);
-   login(data.username,data.password).then((result)=>{
+
+    /*순서 1번
+     로그인 폼의 데이터인 id와 pw를 login함수로 보냄(login api)
+    */
+  await login(data.username,data.password).then(async (result)=>{
       console.log('result',result);
+
+      /*순서 3번
+      login api에서 준 로그인 결과값을 가지고
+      성공일 경우, 서버에서 받아온 token값을 넣어서 getUserInfo api를 호출함
+      클라이언트에서 발급받은 토큰을, 사용자 인증정보를 받아오기 위해 서버에 다시 보내는 것임
+      */
       switch(result.message){
         case 'SUCCESS' :
-          const userInfo = getUserInfo({
-            username:data.username,
-            token : result.token,
-          });
+          const userInfo = await getUserInfo(result.token);
 
-          if(userInfo) setUserInfo(userInfo);
+          /*순서 5
+          서버에 토큰을 보내 받아온 회원 정보를 useState를 이용해 state에 저장해준다.
+          */
+          console.log('SUCCESS userInfo',userInfo)
+          setUserInfo(userInfo);
           break;
 
         case 'FAIL' :
-          throw new Error();
-        break;
+          throw new Error('아이디나 비번이 잘못되었습니다.');
 
         default :
         break;
@@ -91,7 +119,7 @@ const Login = () => {
         User info
       </h2>
       {/* TODO: 유저 정보를 보여주도록 구현하세요. 필요에 따라 state나 다른 변수를 추가하세요. */}
-      {JSON.stringify({username: 'blueStragglr'})}
+      {JSON.stringify(userInfo.name)}
     </div>
   </div>)
 }

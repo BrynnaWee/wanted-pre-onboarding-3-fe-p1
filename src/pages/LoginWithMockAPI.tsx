@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 type LoginSuccessMessage = 'SUCCESS'
 type LoginFailMessage = 'FAIL'
@@ -19,6 +19,9 @@ const getUserInfo = async (): Promise<{ username: string } | null> => {
 }
 
 const LoginWithMockAPI = () => {
+
+  const [userInfo, setUserInfo] = useState({username: 'blueStragglr'});
+
   const loginSubmitHandler = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -47,8 +50,8 @@ const LoginWithMockAPI = () => {
       <h2>
         User info
       </h2>
-      {/* TODO: 유저 정보를 보여주도록 구현하세요. 필요에 따라 state나 다른 변수를 추가하세요. */}
-      {JSON.stringify({username: 'blueStragglr'})}
+      {/* TODO: 유저 정보를 보여주도록 구현하세요. 필요에 따라 state나 다른 변수를 추가하세요.*/}
+      {JSON.stringify(userInfo)} 
     </div>
   </div>)
 }
